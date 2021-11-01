@@ -36,11 +36,13 @@ class InitialBlock(nn.Module):
 
 #repititive residual block with (1x1) - (3x3) - (1x1) kernel
 class BottleneckBlock1_3_1(nn.Module):
-    def __init__(self, in_channels, out_channels, expansion= 6):
+    def __init__(self, in_channels, out_channels, d_stride, d_pad,expansion= 6):
         super(BottleneckBlock1_3_1).__init__
         self.expansion = expansion
+        self.d_stride = d_stride
+        self.d_pad = d_pad
         self.conv1 = nn.Conv2d(in_channels, out_channels*self.expansion, kernel_size=1, stride =1, padding =0)
-        self.conv2 = nn.Conv2d(out_channels, out_channels*self.expansion, kernel_size=3, stride =1, padding =1)
+        self.conv2 = nn.Conv2d(out_channels, out_channels*self.expansion, kernel_size=3, stride =1, padding =self.d_pad)
         self.conv3 = nn.Conv2d(out_channels, out_channels, kernel_size=1, stride =1, padding =0)
         self.relu = nn.ReLU()
         self.batch_norm1 = nn.BatchNorm2d(out_channels, eps = 0.001, momentum = 0.99)
@@ -58,13 +60,14 @@ class BottleneckBlock1_3_1(nn.Module):
 
 # reptitive block with (1x1) - (5x5) - (1x1) kernel
 class BottleneckBlock1_5_1(nn.Module):
-    def __init(self,in_channels, out_channels, expansion= 6):
+    def __init(self,in_channels, out_channels, d_stride, d_pad,expansion= 6):
         super(BottleneckBlock1_5_1, self).__init__()
-
+        self.d_pad = d_pad 
+        self.d_stride = d_stride
         self.expansion = expansion
-        self.conv1 = nn.Conv2d(in_channels, out_channels*self.expansion, kernel_size=1, stride =1, padding =1)
-        self.conv2 = nn.Conv2d(out_channels, out_channels*self.expansion, kernel_size=3, stride =1, padding =1)
-        self.conv3 = nn.Conv2d(out_channels, out_channels, kernel_size=1, stride =1, padding =1)
+        self.conv1 = nn.Conv2d(in_channels, out_channels*self.expansion, kernel_size=1, stride =1, padding =0)
+        self.conv2 = nn.Conv2d(out_channels, out_channels*self.expansion, kernel_size=3, stride =1, padding =self.d_pad)
+        self.conv3 = nn.Conv2d(out_channels, out_channels, kernel_size=1, stride =1, padding =0)
         self.relu = nn.ReLU()
         self.batch_norm1 = nn.BatchNorm2d(out_channels, eps = 0.001, momentum = 0.99)
         self.batch_norm2 = nn.BatchNorm2d(out_channels, eps = 0.001, momentum = 0.99)
@@ -80,13 +83,14 @@ class BottleneckBlock1_5_1(nn.Module):
  
 
 class AggregationBlock(nn.Module):
-    def __init__(self,in_channels, out_channels, expansion):
+    def __init__(self,in_channels, out_channels, expansion, d_stride, d_pad):
         super(AggregationBlock, self).__init__()
-
+        self.d_pad = d_pad 
+        self.d_stride = d_stride 
         self.expansion = expansion
-        self.conv1 = nn.Conv2d(in_channels, out_channels*self.expansion, kernel_size=1, stride =1, padding =1)
-        self.conv2 = nn.Conv2d(out_channels, out_channels*self.expansion, kernel_size=5, stride =1, padding =1)
-        self.conv3 = nn.Conv2d(out_channels, out_channels, kernel_size=1, stride =1, padding =1)
+        self.conv1 = nn.Conv2d(in_channels, out_channels*self.expansion, kernel_size=1, stride =1, padding = 0)
+        self.conv2 = nn.Conv2d(out_channels, out_channels*self.expansion, kernel_size=5, stride =1, padding =self.d_pad)
+        self.conv3 = nn.Conv2d(out_channels, out_channels, kernel_size=1, stride =1, padding =0)
         self.relu = nn.ReLU()
         self.batch_norm1 = nn.BatchNorm2d(out_channels, eps = 0.001, momentum=0.99)
         self.batch_norm2 = nn.BatchNorm2d(out_channels, eps = 0.001, momentum = 0.99)
@@ -111,6 +115,7 @@ class ConvFeatureExtractor(nn.Module):
         self.block3 = BottleneckBlock1_3_1
         self.block4 = BottleneckBlock1_5_1
         self.filter_list = filter_list
+
 
 
 
