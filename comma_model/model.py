@@ -9,7 +9,7 @@ import numpy as np
 """
 To do change relu ---> ELU
 
-expansion factor of 6 in all the next residual layers
+expansion factor of 6 for depthwise conv. in all the next residual layers
 [16,24,48,88,120,208,352] * 6 == num of filters in the respective residual layers
 
 Pytorch 1.7.1 has no efficient net implemented. 
@@ -59,12 +59,13 @@ class InitialResBlock(nn.Module):
 #repititive residual block with (1x1) - (3x3) - (1x1) kernel
 class BottleneckBlock1_3_1(nn.Module):
     def __init__(self, in_channels, out_channels, d_pad,expansion= 6):
-        super(BottleneckBlock1_3_1).__init__
+        super(BottleneckBlock1_3_1,self).__init__()
+
         self.expansion = expansion
         self.d_pad = d_pad
         self.conv1 = nn.Conv2d(in_channels, out_channels*self.expansion, kernel_size=1, stride =1, padding =0)
         self.conv2 = nn.Conv2d(out_channels*self.expansion, out_channels*self.expansion, kernel_size=3, stride =1, padding =self.d_pad)
-        self.conv3 = nn.Conv2d(out_channels, out_channels, kernel_size=1, stride =1, padding =0)
+        self.conv3 = nn.Conv2d(out_channels*self.expansion, out_channels, kernel_size=1, stride =1, padding =0)
         self.relu = nn.ReLU()
         self.batch_norm1 = nn.BatchNorm2d(out_channels, eps = 0.001, momentum = 0.99)
         self.batch_norm2 = nn.BatchNorm2d(out_channels, eps = 0.001, momentum = 0.99)
@@ -81,12 +82,12 @@ class BottleneckBlock1_3_1(nn.Module):
 
 # reptitive block with (1x1) - (5x5) - (1x1) kernel
 class BottleneckBlock1_5_1(nn.Module):
-    def __init(self,in_channels, out_channels,d_pad,expansion= 6):
+    def __init__(self,in_channels, out_channels,d_pad,expansion= 6):
         super(BottleneckBlock1_5_1, self).__init__()
         self.d_pad = d_pad 
         self.expansion = expansion
         self.conv1 = nn.Conv2d(in_channels, out_channels*self.expansion, kernel_size=1, stride =1, padding =0)
-        self.conv2 = nn.Conv2d(out_channels, out_channels*self.expansion, kernel_size=3, stride =1, padding =self.d_pad)
+        self.conv2 = nn.Conv2d(out_channels*self.expansion, out_channels*self.expansion, kernel_size=3, stride =1, padding =self.d_pad)
         self.conv3 = nn.Conv2d(out_channels, out_channels, kernel_size=1, stride =1, padding =0)
         self.relu = nn.ReLU()
         self.batch_norm1 = nn.BatchNorm2d(out_channels, eps = 0.001, momentum = 0.99)
@@ -146,9 +147,9 @@ class ConvFeatureExtractor(nn.Module):
         self.layer1 = intialAggregationBlock(self.num_in_channels)    
         self.layer2 = InitialResBlock(self.filter_list[0], self.filter_list[0]) 
         self.layer3 = AggregationBlock(self.filter_list[0],self.filter_list[1],self.expansion,[(1,0),(2,1),(1,0)],True)
-        self.layer4 = BottleneckBlock1_3_1(self.filter_list[1])
-        # self.layer5 = 
-        # self.layer6 = 
+        self.layer4 = BottleneckBlock1_3_1(self.filter_list[1],self.filter_list[1],1)
+        self.layer5 = BottleneckBlock1_3_1(self.filter_list[1],self.filter_list[1],1)
+        self.layer6 = AggregationBlock()
 
 
     # def make_layers(self, filter_list, blocks ):
@@ -165,6 +166,8 @@ class ConvFeatureExtractor(nn.Module):
         x = self.layer1(x)
         x = self.layer2(x)
         x = self.layer3(x)
+        x = self.layer4(x)
+        x = self.layer5(x)
 
 
         return x 
