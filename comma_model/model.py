@@ -13,11 +13,31 @@ I have figured it out that there is expansion factor of 6 in all the next residu
 [16,24,48,88,120,208,352] * 6 == num of filters in the respective residual layers
 
 """
+## starting aggregation block
+class intialAggregationBlock(nn.Module):
+    def __inti__(self):
+        super(intialAggregationBlock, self).__init__()
+        self.in_channels = 12
+        self.conv1 = nn.Conv2d(self.in_channels,32,kernel_size=3, padding=(1,1), stride=(2,2))
+        self.conv2 = nn.Conv2d(32,32, kernel_size=3, padding=(1,1), stride=(1,1))
+        self.conv3 = nn.Conv2d(32,16,kernel_size=1, stride=(1,1))
+        self.relu = nn.ReLU()
+        self.batchnorm1 = nn.BatchNorm2d(32, eps = 0.001, momentum=0.99)
+        self.batchnorm2 = nn.BatchNorm2d(32, eps = 0.001, momentum=0.99)
+        self.batchnorm3=  nn.BatchNorm2d(16,eps = 0.001, momentum=0.99)
+        
+    def forward(self,x):
+
+        x = self.relu(self.batchnorm1(self.conv1(x)))
+        x = self.relu(self.batchnorm2(self.conv2(x)))
+        x = self.batchnorm3(self.conv3(x))
+
+        return x
 
 #starting residual block
-class InitialBlock(nn.Module):
+class InitialResBlock(nn.Module):
     def __init__(self, in_channels, out_channels):
-        super(InitialBlock, self).__init__()
+        super(InitialResBlock, self).__init__()
         
         self.conv1 = nn.Conv2d(in_channels, out_channels,kernel_size=3, stride=1, padding =1)
         self.conv2 = nn.Conv2d(out_channels, out_channels,kernel_size=1, stride = 1)
@@ -83,12 +103,16 @@ class BottleneckBlock1_5_1(nn.Module):
  
 
 class AggregationBlock(nn.Module):
-    def __init__(self,in_channels, out_channels, expansion, pad_stridepairs= []):
+    def __init__(self,in_channels, out_channels, expansion, pad_stridepairs= [],kernel_3 = False):
         super(AggregationBlock, self).__init__()
         self.pad_stridepairs =pad_stridepairs  
         self.expansion = expansion
         self.conv1 = nn.Conv2d(in_channels, in_channels*self.expansion, kernel_size=1, stride =self.pad_stridepairs[0][0], padding = self.pad_stridepairs[0][1])
-        self.conv2 = nn.Conv2d(in_channels*self.expansion, in_channels*self.expansion, kernel_size=5, stride =self.pad_stridepairs[1][0], padding =self.pad_stridepairs[1][1])
+        if kernel_3 == True:
+            self.conv2 = nn.Conv2d(in_channels*self.expansion, in_channels*self.expansion, kernel_size=3, stride =self.pad_stridepairs[1][0], padding =self.pad_stridepairs[1][1])
+        else:
+            self.conv2 = nn.Conv2d(in_channels*self.expansion, in_channels*self.expansion, kernel_size=5, stride =self.pad_stridepairs[1][0], padding =self.pad_stridepairs[1][1])
+        
         self.conv3 = nn.Conv2d(in_channels*self.expansion, out_channels, kernel_size=1, stride =self.pad_stridepairs[2][0], padding =self.pad_stridepairs[2][1])
         self.relu = nn.ReLU()
         self.batch_norm1 = nn.BatchNorm2d(out_channels, eps = 0.001, momentum=0.99)
@@ -116,8 +140,14 @@ class ConvFeatureExtractor(nn.Module):
         self.filter_list = filter_list
         self.num_in_channels = num_in_channels 
         self.initial_output_channels = self.filter_list[0]
+        
 
-        self.layer1 = self.make_layers()
+        
+        
+        
+        
+        self.layer1 = 
+        
         # self.layer2 = 
         # self.layer3 = 
         # self.layer4 = 
@@ -125,12 +155,14 @@ class ConvFeatureExtractor(nn.Module):
         # self.layer6 = 
 
 
-    def make_layers(self, filter_size, blocks):
+    # def make_layers(self, filter_list, blocks ):
         
-        layers = []
+    #     layers = []
 
+    #     layers.append(self.blocks(filter_list))
+        
 
-        return nn.Sequential(*layers)
+    #     return nn.Sequential(*layers)
 
     def feed_forward_network(self,x):
 
@@ -138,7 +170,6 @@ class ConvFeatureExtractor(nn.Module):
         return x 
 
 """
-
 filters_list = [16,24,48,88,120,208,352]
 model = AggregationBlock(filters_list[4],filters_list[5],6,[(1,0),(1,2),(1,0)])
 this is an example how to make the aggregation layers
