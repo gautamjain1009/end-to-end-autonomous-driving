@@ -56,7 +56,7 @@ class BottleneckBlock1_3_1(nn.Module):
         x = self.relu(self.batch_norm2(self.conv2(x)))
         x = self.relu(self.batch_norm3(self.conv3(x)))
         x+=identity
-        return x 
+        return x
 
 # reptitive block with (1x1) - (5x5) - (1x1) kernel
 class BottleneckBlock1_5_1(nn.Module):
@@ -83,14 +83,13 @@ class BottleneckBlock1_5_1(nn.Module):
  
 
 class AggregationBlock(nn.Module):
-    def __init__(self,in_channels, out_channels, expansion, d_stride, d_pad):
+    def __init__(self,in_channels, out_channels, expansion, pad_stridepairs= []):
         super(AggregationBlock, self).__init__()
-        self.d_pad = d_pad 
-        self.d_stride = d_stride 
+        self.pad_stridepairs =pad_stridepairs  
         self.expansion = expansion
-        self.conv1 = nn.Conv2d(in_channels, out_channels*self.expansion, kernel_size=1, stride =1, padding = 0)
-        self.conv2 = nn.Conv2d(out_channels, out_channels*self.expansion, kernel_size=5, stride =1, padding =self.d_pad)
-        self.conv3 = nn.Conv2d(out_channels, out_channels, kernel_size=1, stride =1, padding =0)
+        self.conv1 = nn.Conv2d(in_channels, in_channels*self.expansion, kernel_size=1, stride =self.pad_stridepairs[0][0], padding = self.pad_stridepairs[0][1])
+        self.conv2 = nn.Conv2d(in_channels*self.expansion, in_channels*self.expansion, kernel_size=5, stride =self.pad_stridepairs[1][0], padding =self.pad_stridepairs[1][1])
+        self.conv3 = nn.Conv2d(in_channels*self.expansion, out_channels, kernel_size=1, stride =self.pad_stridepairs[2][0], padding =self.pad_stridepairs[2][1])
         self.relu = nn.ReLU()
         self.batch_norm1 = nn.BatchNorm2d(out_channels, eps = 0.001, momentum=0.99)
         self.batch_norm2 = nn.BatchNorm2d(out_channels, eps = 0.001, momentum = 0.99)
@@ -104,10 +103,10 @@ class AggregationBlock(nn.Module):
         return x 
 
 
-## Combined Resnet for conv features extraction
+# Combined Resnet for conv features extraction
 
 class ConvFeatureExtractor(nn.Module):
-    def __init__(self,in_channels,out_channels, filter_list, num_in_channels =12):
+    def __init__(self, filter_list, num_in_channels =12):
         super(ConvFeatureExtractor,self).__init__()
 
         self.block1 = InitialBlock
@@ -115,16 +114,20 @@ class ConvFeatureExtractor(nn.Module):
         self.block3 = BottleneckBlock1_3_1
         self.block4 = BottleneckBlock1_5_1
         self.filter_list = filter_list
+        self.num_in_channels = num_in_channels 
+        self.initial_output_channels = self.filter_list[0]
+
+        self.layer1 = self.make_layers()
+        # self.layer2 = 
+        # self.layer3 = 
+        # self.layer4 = 
+        # self.layer5 = 
+        # self.layer6 = 
 
 
-
-
-
-    def make_layers(self, filter_list):
-        layers = []
-
-
+    def make_layers(self, filter_size, blocks):
         
+        layers = []
 
 
         return nn.Sequential(*layers)
@@ -132,11 +135,11 @@ class ConvFeatureExtractor(nn.Module):
     def feed_forward_network(self,x):
 
 
-
-
         return x 
 
+"""
 
-model = AggregationBlock(3,16,6)
-print(model)
-# filters_list = [16,24,48,88,120,208,352]
+filters_list = [16,24,48,88,120,208,352]
+model = AggregationBlock(filters_list[4],filters_list[5],6,[(1,0),(1,2),(1,0)])
+this is an example how to make the aggregation layers
+"""
