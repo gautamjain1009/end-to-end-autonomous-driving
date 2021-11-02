@@ -15,9 +15,9 @@ I have figured it out that there is expansion factor of 6 in all the next residu
 """
 ## starting aggregation block
 class intialAggregationBlock(nn.Module):
-    def __inti__(self):
+    def __init__(self, in_channels):
         super(intialAggregationBlock, self).__init__()
-        self.in_channels = 12
+        self.in_channels = in_channels
         self.conv1 = nn.Conv2d(self.in_channels,32,kernel_size=3, padding=(1,1), stride=(2,2))
         self.conv2 = nn.Conv2d(32,32, kernel_size=3, padding=(1,1), stride=(1,1))
         self.conv3 = nn.Conv2d(32,16,kernel_size=1, stride=(1,1))
@@ -132,23 +132,18 @@ class AggregationBlock(nn.Module):
 class ConvFeatureExtractor(nn.Module):
     def __init__(self, filter_list, num_in_channels =12):
         super(ConvFeatureExtractor,self).__init__()
-
-        self.block1 = InitialBlock
-        self.block2 = AggregationBlock
-        self.block3 = BottleneckBlock1_3_1
-        self.block4 = BottleneckBlock1_5_1
+        
+        self.block1 = intialAggregationBlock
+        self.block2 = InitialResBlock
+        self.block3 = AggregationBlock
+        self.block4 = BottleneckBlock1_3_1
+        self.block5 = BottleneckBlock1_5_1
         self.filter_list = filter_list
         self.num_in_channels = num_in_channels 
-        self.initial_output_channels = self.filter_list[0]
-        
-
-        
-        
-        
-        
-        self.layer1 = 
-        
-        # self.layer2 = 
+        # self.initial_output_channels = self.filter_list[0]
+     
+        self.layer1 = self.block1(self.num_in_channels)    
+        self.layer2 = self.block2(self.filter_list[0], self.filter_list[0]) 
         # self.layer3 = 
         # self.layer4 = 
         # self.layer5 = 
@@ -164,7 +159,10 @@ class ConvFeatureExtractor(nn.Module):
 
     #     return nn.Sequential(*layers)
 
-    def feed_forward_network(self,x):
+    def forward(self,x):
+
+        x = self.layer1(x)
+        x = self.layer2(x)
 
 
         return x 
@@ -174,3 +172,6 @@ filters_list = [16,24,48,88,120,208,352]
 model = AggregationBlock(filters_list[4],filters_list[5],6,[(1,0),(1,2),(1,0)])
 this is an example how to make the aggregation layers
 """
+filters_list = [16,24,48,88,120,208,352]
+model = ConvFeatureExtractor(filters_list)
+print(model)
