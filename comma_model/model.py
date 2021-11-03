@@ -5,6 +5,7 @@ from torch.nn.modules.activation import ELU
 from torch.nn.modules.linear import Identity
 import torchvision 
 import numpy as np 
+from torchsummary import summary
 
 """
 To do::  relu ---> ELU, code refactoring. 
@@ -176,9 +177,6 @@ class ConvFeatureExtractor(nn.Module):
         self.layer22 = AggregationBlock(self.filter_list[5],self.filter_list[6],self.expansion,[(1,0),(1,1),(1,0)],True) 
         self.layer23 = BottleneckBlock1_3_1(self.filter_list[6],self.filter_list[6],1)
 
-        self.layer24 = self.relu(self.batchnorm1(self.conv1()))
-        self.layer25 = self.batchnorm2(self.conv2())
-
     def forward(self,x):
         """
         It can be refactored
@@ -206,7 +204,6 @@ class ConvFeatureExtractor(nn.Module):
         x = self.layer21(x)
         x = self.layer22(x)
         x = self.layer23(x)
-
         x = self.relu(self.batchnorm1(self.conv1(x)))
         x = self.batchnorm2(self.conv2(x))
 
@@ -220,4 +217,21 @@ this is an example how to make the aggregation layers
 filters_list = [16,24,48,88,120,208,352]
 expansion =6
 model = ConvFeatureExtractor(filters_list,expansion)
-print(model)
+
+# x = torch.randn(1,12,128,256)
+# # x = x.permute(0,2,3,1)
+# output = model(x)
+
+class LSTMCell(nn.Module):
+    def __init__(self,desire, conv_features,traffic_convention):
+        super(LSTMCell,self).__init__()
+
+        self.desire =desire 
+        self.conv_features = conv_features
+        self.traffic_convention = traffic_convention
+
+    def forward(self,x):
+        x = torch.cat(self.conv_features,self.desire, self.traffic_convention)
+        
+
+        return 
