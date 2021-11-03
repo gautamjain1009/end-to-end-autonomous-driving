@@ -71,8 +71,8 @@ class BottleneckBlock1_3_1(nn.Module):
         self.conv2 = nn.Conv2d(out_channels*self.expansion, out_channels*self.expansion, kernel_size=3, stride =1, padding =self.d_pad)
         self.conv3 = nn.Conv2d(out_channels*self.expansion, out_channels, kernel_size=1, stride =1, padding =0)
         self.relu = nn.ReLU()
-        self.batch_norm1 = nn.BatchNorm2d(out_channels, eps = 0.001, momentum = 0.99)
-        self.batch_norm2 = nn.BatchNorm2d(out_channels, eps = 0.001, momentum = 0.99)
+        self.batch_norm1 = nn.BatchNorm2d(out_channels*self.expansion, eps = 0.001, momentum = 0.99)
+        self.batch_norm2 = nn.BatchNorm2d(out_channels*self.expansion, eps = 0.001, momentum = 0.99)
         self.batch_norm3 = nn.BatchNorm2d(out_channels, eps = 0.001, momentum = 0.99)
 
     def forward(self, x):
@@ -92,10 +92,10 @@ class BottleneckBlock1_5_1(nn.Module):
         self.expansion = expansion
         self.conv1 = nn.Conv2d(in_channels, out_channels*self.expansion, kernel_size=1, stride =1, padding =0)
         self.conv2 = nn.Conv2d(out_channels*self.expansion, out_channels*self.expansion, kernel_size=5, stride =1, padding =self.d_pad)
-        self.conv3 = nn.Conv2d(out_channels, out_channels, kernel_size=1, stride =1, padding =0)
+        self.conv3 = nn.Conv2d(out_channels*self.expansion, out_channels, kernel_size=1, stride =1, padding =0)
         self.relu = nn.ReLU()
-        self.batch_norm1 = nn.BatchNorm2d(out_channels, eps = 0.001, momentum = 0.99)
-        self.batch_norm2 = nn.BatchNorm2d(out_channels, eps = 0.001, momentum = 0.99)
+        self.batch_norm1 = nn.BatchNorm2d(out_channels*self.expansion, eps = 0.001, momentum = 0.99)
+        self.batch_norm2 = nn.BatchNorm2d(out_channels*self.expansion, eps = 0.001, momentum = 0.99)
         self.batch_norm3 = nn.BatchNorm2d(out_channels, eps = 0.001, momentum = 0.99)
     def forward(self,x):
 
@@ -120,9 +120,10 @@ class AggregationBlock(nn.Module):
             self.conv2 = nn.Conv2d(in_channels*self.expansion, in_channels*self.expansion, kernel_size=5, stride =self.pad_stridepairs[1][0], padding =self.pad_stridepairs[1][1])
         
         self.conv3 = nn.Conv2d(in_channels*self.expansion, out_channels, kernel_size=1, stride =self.pad_stridepairs[2][0], padding =self.pad_stridepairs[2][1])
+        
         self.relu = nn.ReLU()
-        self.batch_norm1 = nn.BatchNorm2d(out_channels, eps = 0.001, momentum=0.99)
-        self.batch_norm2 = nn.BatchNorm2d(out_channels, eps = 0.001, momentum = 0.99)
+        self.batch_norm1 = nn.BatchNorm2d(in_channels*self.expansion, eps = 0.001, momentum=0.99)
+        self.batch_norm2 = nn.BatchNorm2d(in_channels*self.expansion, eps = 0.001, momentum = 0.99)
         self.batch_norm3 = nn.BatchNorm2d(out_channels, eps = 0.001, momentum = 0.99)          
 
     def forward(self,x):
@@ -148,7 +149,14 @@ class ConvFeatureExtractor(nn.Module):
         self.expansion = expansion
         self.num_in_channels = num_in_channels 
         # self.initial_output_channels = self.filter_list[0]
-     
+
+        # last two conv. for the conv extractor. 
+        self.conv1 = nn.Conv2d(self.filter_list[-1],self.filter_list[-1],kernel_size=1, stride =1)
+        self.conv2 = nn.Conv2d(self.filter_list[-1],32, kernel_size=1, stride=1)
+        self.relu = nn.ReLU()
+        self.batchnorm1 = nn.BatchNorm2d(self.filter_list[-1],eps=0.001, momentum=0.99)
+        self.batchnorm2 = nn.BatchNorm2d(32,eps =0.001, momentum=0.99)
+        
         self.layer1 = intialAggregationBlock(self.num_in_channels)    
         self.layer2 = InitialResBlock(self.filter_list[0], self.filter_list[0]) 
         self.layer3 = AggregationBlock(self.filter_list[0],self.filter_list[1],self.expansion,[(1,0),(2,1),(1,0)],True)
@@ -158,14 +166,25 @@ class ConvFeatureExtractor(nn.Module):
         self.layer7 = BottleneckBlock1_5_1(self.filter_list[2],self.filter_list[2],2)
         self.layer8 = BottleneckBlock1_5_1(self.filter_list[2],self.filter_list[2],2)
         self.layer9 = AggregationBlock(self.filter_list[1],self.filter_list[2],self.expansion,[(1,0),(2,1),(1,0)],True)
-        self.layer10 =
-        # self.layer11 = 
-        # self.layer12 = 
-        # self.layer13 =
-        # self.layer14 = 
-        # self.layer15 = 
+        self.layer10 =BottleneckBlock1_3_1(self.filter_list[1],self.filter_list[1],1)
+        self.layer11 = BottleneckBlock1_3_1(self.filter_list[1],self.filter_list[1],1)
+        self.layer12 = BottleneckBlock1_3_1(self.filter_list[1],self.filter_list[1],1)
+        self.layer13 =AggregationBlock(self.filter_list[1],self.filter_list[2],self.expansion,[(1,0),(2,2),(1,0)],False)
+        self.layer14 = BottleneckBlock1_5_1(self.filter_list[2],self.filter_list[2],2)
+        self.layer15 = BottleneckBlock1_5_1(self.filter_list[2],self.filter_list[2],2)
+        self.layer16 = BottleneckBlock1_5_1(self.filter_list[2],self.filter_list[2],2)
+        self.layer17 = AggregationBlock(self.filter_list[1],self.filter_list[2],self.expansion,[(1,0),(2,2),(1,0)],False)
+        self.layer18 = BottleneckBlock1_5_1(self.filter_list[2],self.filter_list[2],2)
+        self.layer19 = BottleneckBlock1_5_1(self.filter_list[2],self.filter_list[2],2)
+        self.layer20 = BottleneckBlock1_5_1(self.filter_list[2],self.filter_list[2],2)
+        self.layer21 = BottleneckBlock1_5_1(self.filter_list[2],self.filter_list[2],2)
+        self.layer22 = AggregationBlock(self.filter_list[1],self.filter_list[2],self.expansion,[(1,0),(2,1),(1,0)],True)
+        self.layer23 = BottleneckBlock1_3_1(self.filter_list[1],self.filter_list[1],1)
+        self.layer24 = self.relu(self.batchnorm1(self.conv1))
+        self.layer25 = self.batchnorm2(self.conv2)
 
 
+    
 
     # def make_layers(self, filter_list, blocks ):
         
@@ -177,7 +196,9 @@ class ConvFeatureExtractor(nn.Module):
     #     return nn.Sequential(*layers)
 
     def forward(self,x):
-
+        """
+        It can be refactored
+        """
         x = self.layer1(x)
         x = self.layer2(x)
         x = self.layer3(x)
@@ -188,8 +209,21 @@ class ConvFeatureExtractor(nn.Module):
         x = self.layer8(x)
         x = self.layer9(x)
         x = self.layer10(x)
-        # x = self.layer11(x)
-        
+        x = self.layer11(x)
+        x = self.layer12(x)
+        x = self.layer13(x)
+        x = self.layer14(x)
+        x = self.layer15(x)
+        x = self.layer16(x)
+        x = self.layer17(x)
+        x = self.layer18(x)
+        x = self.layer19(x)
+        x = self.layer20(x)
+        x = self.layer21(x)
+        x = self.layer22(x)
+        x = self.layer23(x)
+        x = self.layer24(x)
+        x = self.layer25(x)
 
 
         return x 
