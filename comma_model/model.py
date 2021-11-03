@@ -3,12 +3,13 @@ import torch.nn as nn
 import torch.functional as F
 from torch.nn.modules.activation import ELU
 from torch.nn.modules.linear import Identity
+from torch.nn.modules.rnn import LSTM
 import torchvision 
 import numpy as np 
 from torchsummary import summary
 
 """
-To do::  relu ---> ELU, code refactoring. 
+To do:: code refactoring. 
 
 expansion factor of 6 for depthwise conv. in all the next residual layers
 [16,24,48,88,120,208,352] * 6 == num of filters in the respective residual layers
@@ -25,14 +26,14 @@ class intialAggregationBlock(nn.Module):
         self.conv1 = nn.Conv2d(self.in_channels,32,kernel_size=3, padding=(1,1), stride=(2,2))
         self.conv2 = nn.Conv2d(32,32, kernel_size=3, padding=(1,1), stride=(1,1))
         self.conv3 = nn.Conv2d(32,16,kernel_size=1, stride=(1,1))
-        self.relu = nn.ReLU()
+        self.elu = ELU()
         self.batchnorm1 = nn.BatchNorm2d(32, eps = 0.001, momentum=0.99)
         self.batchnorm2 = nn.BatchNorm2d(32, eps = 0.001, momentum=0.99)
         self.batchnorm3=  nn.BatchNorm2d(16,eps = 0.001, momentum=0.99)        
     
     def forward(self,x):
-        x = self.relu(self.batchnorm1(self.conv1(x)))
-        x = self.relu(self.batchnorm2(self.conv2(x)))
+        x = self.elu(self.batchnorm1(self.conv1(x)))
+        x = self.elu(self.batchnorm2(self.conv2(x)))
         x = self.batchnorm3(self.conv3(x))
 
         return x
@@ -46,12 +47,12 @@ class InitialResBlock(nn.Module):
         self.conv2 = nn.Conv2d(out_channels, out_channels,kernel_size=1, stride = 1)
         self.batch_norm1 = nn.BatchNorm2d(out_channels,eps = 0.001, momentum=0.99)
         self.batch_norm2 = nn.BatchNorm2d(out_channels, eps = 0.001, momentum= 0.99)
-        self.relu = nn.ReLU()
+        self.elu = ELU()
         
     def forward(self, x):
         identity = x.clone()
-        x = self.relu(self.batch_norm1(self.conv1(x)))
-        x = self.relu(self.batch_norm2(self.conv2(x)))
+        x = self.elu(self.batch_norm1(self.conv1(x)))
+        x = self.elu(self.batch_norm2(self.conv2(x)))
         x+= identity
 
         return x
@@ -70,7 +71,7 @@ class BottleneckBlock1_3_1(nn.Module):
         self.conv1 = nn.Conv2d(in_channels, out_channels*self.expansion, kernel_size=1, stride =1, padding =0)
         self.conv2 = nn.Conv2d(out_channels*self.expansion, out_channels*self.expansion, kernel_size=3, stride =1, padding =self.d_pad)
         self.conv3 = nn.Conv2d(out_channels*self.expansion, out_channels, kernel_size=1, stride =1, padding =0)
-        self.relu = nn.ReLU()
+        self.elu = ELU()
         self.batch_norm1 = nn.BatchNorm2d(out_channels*self.expansion, eps = 0.001, momentum = 0.99)
         self.batch_norm2 = nn.BatchNorm2d(out_channels*self.expansion, eps = 0.001, momentum = 0.99)
         self.batch_norm3 = nn.BatchNorm2d(out_channels, eps = 0.001, momentum = 0.99)
@@ -78,9 +79,9 @@ class BottleneckBlock1_3_1(nn.Module):
     def forward(self, x):
 
         identity = x.clone()
-        x = self.relu(self.batch_norm1(self.conv1(x)))
-        x = self.relu(self.batch_norm2(self.conv2(x)))
-        x = self.relu(self.batch_norm3(self.conv3(x)))
+        x = self.elu(self.batch_norm1(self.conv1(x)))
+        x = self.elu(self.batch_norm2(self.conv2(x)))
+        x = self.elu(self.batch_norm3(self.conv3(x)))
         x+=identity
         return x
 
@@ -94,16 +95,16 @@ class BottleneckBlock1_5_1(nn.Module):
         self.conv1 = nn.Conv2d(in_channels, out_channels*self.expansion, kernel_size=1, stride =1, padding =0)
         self.conv2 = nn.Conv2d(out_channels*self.expansion, out_channels*self.expansion, kernel_size=5, stride =1, padding =self.d_pad)
         self.conv3 = nn.Conv2d(out_channels*self.expansion, out_channels, kernel_size=1, stride =1, padding =0)
-        self.relu = nn.ReLU()
+        self.elu = ELU()
         self.batch_norm1 = nn.BatchNorm2d(out_channels*self.expansion, eps = 0.001, momentum = 0.99)
         self.batch_norm2 = nn.BatchNorm2d(out_channels*self.expansion, eps = 0.001, momentum = 0.99)
         self.batch_norm3 = nn.BatchNorm2d(out_channels, eps = 0.001, momentum = 0.99)
     
     def forward(self,x):
         identity = x.clone()
-        x = self.relu(self.batch_norm1(self.conv1(x)))
-        x = self.relu(self.batch_norm2(self.conv2(x)))
-        x = self.relu(self.batch_norm3(self.conv3(x)))
+        x = self.elu(self.batch_norm1(self.conv1(x)))
+        x = self.elu(self.batch_norm2(self.conv2(x)))
+        x = self.elu(self.batch_norm3(self.conv3(x)))
         x+=identity
         return x 
  
@@ -123,14 +124,14 @@ class AggregationBlock(nn.Module):
         
         self.conv3 = nn.Conv2d(in_channels*self.expansion, out_channels, kernel_size=1, stride =self.pad_stridepairs[2][0], padding =self.pad_stridepairs[2][1])
         
-        self.relu = nn.ReLU()
+        self.elu = ELU()
         self.batch_norm1 = nn.BatchNorm2d(in_channels*self.expansion, eps = 0.001, momentum=0.99)
         self.batch_norm2 = nn.BatchNorm2d(in_channels*self.expansion, eps = 0.001, momentum = 0.99)
         self.batch_norm3 = nn.BatchNorm2d(out_channels, eps = 0.001, momentum = 0.99)          
 
     def forward(self,x):
-        x = self.relu(self.batch_norm1(self.conv1(x)))
-        x = self.relu(self.batch_norm2(self.conv2(x)))
+        x = self.elu(self.batch_norm1(self.conv1(x)))
+        x = self.elu(self.batch_norm2(self.conv2(x)))
         x = self.batch_norm3(self.conv1(x))
 
         return x 
@@ -149,7 +150,7 @@ class ConvFeatureExtractor(nn.Module):
         # last two conv. operations
         self.conv1 = nn.Conv2d(self.filter_list[-1],self.filter_list[-1],kernel_size=1, stride =1)
         self.conv2 = nn.Conv2d(self.filter_list[-1],32, kernel_size=1, stride=1)
-        self.relu = nn.ReLU()
+        self.elu = ELU()
         self.batchnorm1 = nn.BatchNorm2d(self.filter_list[-1],eps=0.001, momentum=0.99)
         self.batchnorm2 = nn.BatchNorm2d(32,eps =0.001, momentum=0.99)
         
@@ -204,7 +205,7 @@ class ConvFeatureExtractor(nn.Module):
         x = self.layer21(x)
         x = self.layer22(x)
         x = self.layer23(x)
-        x = self.relu(self.batchnorm1(self.conv1(x)))
+        x = self.elu(self.batchnorm1(self.conv1(x)))
         x = self.batchnorm2(self.conv2(x))
 
         return x 
@@ -214,24 +215,147 @@ filters_list = [16,24,48,88,120,208,352]
 model = AggregationBlock(filters_list[4],filters_list[5],6,[(1,0),(1,2),(1,0)])
 this is an example how to make the aggregation layers
 """
-filters_list = [16,24,48,88,120,208,352]
-expansion =6
-model = ConvFeatureExtractor(filters_list,expansion)
+# filters_list = [16,24,48,88,120,208,352]
+# expansion =6
+# model = ConvFeatureExtractor(filters_list,expansion)
 
 # x = torch.randn(1,12,128,256)
 # # x = x.permute(0,2,3,1)
 # output = model(x)
 
-class LSTMCell(nn.Module):
+
+"""
+Fully connected layers are GEMM operators in ONNX computation graph.
+"""
+class preLSTMCell(nn.Module):
     def __init__(self,desire, conv_features,traffic_convention):
-        super(LSTMCell,self).__init__()
+        super(preLSTMCell,self).__init__()
 
         self.desire =desire 
         self.conv_features = conv_features
         self.traffic_convention = traffic_convention
 
+        assert self.desire.size() == (1,8), "desire tensor shape is wrong"
+        assert self.conv_features.size() == (1,1024), "conv feature tensor shape is wrong"
+        assert self.traffic_convention.size() == (1,2), "traffic convention tensor shape is wrong"
+        
+        self.gemmtolstm = nn.Linear(1034,1024)
+        self.elu = ELU()
+        self.relu = nn.ReLU()
+        
     def forward(self,x):
-        x = torch.cat(self.conv_features,self.desire, self.traffic_convention)
+        x = self.elu(torch.cat((self.conv_features,self.desire, self.traffic_convention),1))
+        x = self.relu(self.gemmtolstm(x))
+        return x
+
+#LSTM Cell 
+# class LSTMCell(nn.Module):
+#     def __init__(self,in_prelstmcell, conv_ft_in, desire_in, traffic_conv):
+#         super(LSTMCell,self).__init__()
+#         self.conv_ft_in = conv_ft_in
+#         self.desire_in = desire_in
+#         self.traffic_conv = traffic_conv
+#         self.in_prelstmcell = preLSTMCell(desire_in, conv_ft_in, traffic_conv)
+
         
 
-        return 
+#     def forward(self,x):
+
+#         return x
+
+
+#### all the dense output head for the network
+
+class pathpredictionModel(nn.Module):
+    def __init__(self):
+        super(pathpredictionModel,self).__init__()
+
+    def forward():
+        pass 
+
+
+class lanepredictionModel(nn.module):
+    def __init__(self):
+        super(lanepredictionModel,self).__init__()
+
+    def forward(self,x):
+
+        return x 
+
+
+class lanePROB(nn.module):
+    def __init__(self):
+        super(lanePROB,self).__init__()
+
+    def forward(self,x):
+
+        return x 
+
+
+
+class ROADpredictionModel(nn.module):
+    def __init__(self):
+        super(ROADpredictionModel,self).__init__()
+
+    def forward(self,x):
+
+        return x 
+
+
+class LEADpredictionModel(nn.module):
+    def __init__(self):
+        super(LEADpredictionModel,self).__init__()
+
+    def forward(self,x):
+
+        return x 
+
+
+class LEADPROB(nn.module):
+    def __init__(self):
+        super(LEADPROB,self).__init__()
+
+    def forward(self,x):
+
+        return x 
+
+class desirepredictionModel(nn.module):
+    def __init__(self):
+        super(desirepredictionModel,self).__init__()
+
+    def forward(self,x):
+
+        return x 
+
+
+class metapredictionModel(nn.module):
+    def __init__(self):
+        super(metapredictionModel,self).__init__()
+
+    def forward(self,x):
+
+        return x 
+
+class posepredictionModel(nn.module):
+    def __init__(self):
+        super(posepredictionModel,self).__init__()
+
+    def forward(self,x):
+
+        return x 
+
+
+
+### Combined model
+
+class Combined_model(nn.Module):
+    def __init__(self):
+        super(Combined_model,self).__init__()
+
+
+
+    def forward(self,x):
+
+        return x
+
+
