@@ -211,20 +211,6 @@ class ConvFeatureExtractor(nn.Module):
         return x 
 
 """
-filters_list = [16,24,48,88,120,208,352]
-model = AggregationBlock(filters_list[4],filters_list[5],6,[(1,0),(1,2),(1,0)])
-this is an example how to make the aggregation layers
-"""
-# filters_list = [16,24,48,88,120,208,352]
-# expansion =6
-# model = ConvFeatureExtractor(filters_list,expansion)
-
-# x = torch.randn(1,12,128,256)
-# # x = x.permute(0,2,3,1)
-# output = model(x)
-
-
-"""
 Fully connected layers are GEMM operators in ONNX computation graph.
 """
 class preLSTMCell(nn.Module):
@@ -266,96 +252,55 @@ class preLSTMCell(nn.Module):
 
 #### all the dense output head for the network
 
-class pathpredictionModel(nn.Module):
-    def __init__(self):
-        super(pathpredictionModel,self).__init__()
+class CommanBranchOuputModule(nn.Module):
+    def __init__(self,input_dim, output_dim):
+        super(CommanBranchOuputModule,self).__init__()
+        self.input_dim = input_dim 
+        self.output_dim = output_dim
+        self.fc1 = nn.Linear(1024,self.input_dim)
+        self.fc2 = nn.Linear(self.input_dim, self.input_dim)
+        self.fc3 = nn.Linear(self.input_dim,self.input_dim)
+        self.fc4 = nn.Linear(self.input_dim,output_dim)
+        self.relu = nn.ReLU()
 
-    def forward():
+    def forward(self,x):
+        x =self.relu(self.fc1(x))
+        identity = x.clone()
+        x = self.relu(self.fc2(x))
+        x = self.fc3(x)
+        x +=identity
+        x = self.relu(x)
+        x =self.fc4(x) 
+
         pass 
 
 
-class lanepredictionModel(nn.module):
-    def __init__(self):
-        super(lanepredictionModel,self).__init__()
 
-    def forward(self,x):
+# ### Combined model
 
-        return x 
-
-
-class lanePROB(nn.module):
-    def __init__(self):
-        super(lanePROB,self).__init__()
-
-    def forward(self,x):
-
-        return x 
+# class Combined_model(nn.Module):
+#     def __init__(self):
+#         super(Combined_model,self).__init__()
 
 
 
-class ROADpredictionModel(nn.module):
-    def __init__(self):
-        super(ROADpredictionModel,self).__init__()
+#     def forward(self,x):
 
-    def forward(self,x):
+#         return x
+"""
+filters_list = [16,24,48,88,120,208,352]
+model = AggregationBlock(filters_list[4],filters_list[5],6,[(1,0),(1,2),(1,0)])
+this is an example how to make the aggregation layers
+"""
+# filters_list = [16,24,48,88,120,208,352]
+# expansion = 6
+# model = ConvFeatureExtractor(filters_list,expansion)
 
-        return x 
+# x = torch.randn(1,12,128,256)
+# # x = x.permute(0,2,3,1)
+# output = model(x)
 
+inputs_dim_outputheads= {"path":[256], "ll_pred":32, "llprob":16,"road_edges":16 ,"lead_car":64 , "leadprob":16, "desire_state":32, "meta":[64,32], "pose":32}
 
-class LEADpredictionModel(nn.module):
-    def __init__(self):
-        super(LEADpredictionModel,self).__init__()
-
-    def forward(self,x):
-
-        return x 
-
-
-class LEADPROB(nn.module):
-    def __init__(self):
-        super(LEADPROB,self).__init__()
-
-    def forward(self,x):
-
-        return x 
-
-class desirepredictionModel(nn.module):
-    def __init__(self):
-        super(desirepredictionModel,self).__init__()
-
-    def forward(self,x):
-
-        return x 
-
-
-class metapredictionModel(nn.module):
-    def __init__(self):
-        super(metapredictionModel,self).__init__()
-
-    def forward(self,x):
-
-        return x 
-
-class posepredictionModel(nn.module):
-    def __init__(self):
-        super(posepredictionModel,self).__init__()
-
-    def forward(self,x):
-
-        return x 
-
-
-
-### Combined model
-
-class Combined_model(nn.Module):
-    def __init__(self):
-        super(Combined_model,self).__init__()
-
-
-
-    def forward(self,x):
-
-        return x
-
+output_dim_outputheads = {"path":4955, "ll_pred":132, "llprob":8,"road_edges":132 ,"lead_car":102, "leadprob":3, "desire_state":8, "meta":[48,32], "pose":12}
 
