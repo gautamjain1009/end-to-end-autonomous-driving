@@ -207,6 +207,7 @@ class ConvFeatureExtractor(nn.Module):
         x = self.layer23(x)
         x = self.elu(self.batchnorm1(self.conv1(x)))
         x = self.batchnorm2(self.conv2(x))
+        x = x.view(-1,1024)
 
         return x 
 
@@ -283,6 +284,12 @@ class outputHeads(nn.Module):
         super(outputHeads,self).__init__()
         self.inputs_dim = inputs_dim
         self.outputs_dim = outputs_dim 
+
+        self.fc1 = nn.Linear(1536,1024)
+        self.fc2 = nn.Linear(1024,1024)
+        self.relu = nn.ReLU()
+        self.elu = ELU()
+        
         self.path_layer= CommanBranchOuputModule(self.inputs_dim["path"], self.outputs_dim["path"])
 
         self.ll_pred_1_layer = CommanBranchOuputModule(self.inputs_dim["ll_pred"], self.outputs_dim["ll_pred"])
@@ -295,8 +302,21 @@ class outputHeads(nn.Module):
         self.road_edg_layer1 = CommanBranchOuputModule(self.inputs_dim["road_edges"],outputs_dim["road_edges"])
         self.road_edg_layer2 = CommanBranchOuputModule(self.inputs_dim["road_edges"],outputs_dim["road_edges"])
 
+        self.lead_car_layer = CommanBranchOuputModule(self.inputs_dim["lead_car"], self.outputs_dim["lead_car"])
+        self.lead_prob_layer = CommanBranchOuputModule(self.inputs_dim["leadprob"], self.outputs_dim["leadprob"])
+        self.desire_layer = CommanBranchOuputModule(self.inputs_dim["desire_state"], self.outputs_dim["desire_state"])
         
-    def forward(self,x):
+        self.meta_layer1 = CommanBranchOuputModule(self.inputs_dim["meta"][0],self.outputs_dim["meta"][0])
+        self.meta_layer2 = CommanBranchOuputModule(self.inputs_dim["meta"][1],self.outputs_dim["meta"][1])
+
+        self.pose_layer = CommanBranchOuputModule(self.inputs_dim["pose"],self.outputs_dim["pose"]) 
+    
+    def forward(self,x,y):
+        
+        x = self.relu(self.fc1(x))
+
+        y = self.elu(y)
+        y = self.relu(self.fc2(y))
 
         #paths 
         path_pred_out = self.path_layer(x)
@@ -320,10 +340,27 @@ class outputHeads(nn.Module):
         road_edg_pred = torch.cat((road_edg_pred1, road_edg_pred2),2)
         road_edg_pred_f = road_edg_pred.view(-1,road_edg_pred.size()[0]*road_edg_pred.size()[1]*road_edg_pred.size()[2]) 
 
-        ##lead_car
-        
+        #lead car
+        lead_car_pred = self.lead_car_layer(x)
 
-        return path_pred_out, ll_pred_f, ll_prob, road_edg_pred_f 
+        #lead prob
+        lead_prob_pred = self.lead_prob_layer(x)
+
+        #desire state
+        desire_pred = self.desire_layer(x)
+
+        #meta1 
+        meta1_pred = self.meta_layer1(y)
+        
+        #meta2
+        meta2_pred = self.meta_layer2(y)
+
+        #pose 
+        pose_pred = self.pose_layer(y)
+
+
+        return torch.cat((path_pred_out, ll_pred_f, ll_prob, road_edg_pred_f, 
+                        lead_car_pred, lead_prob_pred, desire_pred, meta1_pred,meta2_pred,pose_pred),1) 
 
 
 
