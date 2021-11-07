@@ -274,6 +274,57 @@ class CommanBranchOuputModule(nn.Module):
 
         pass 
 
+class outputHeads(nn.Module):
+
+    """
+    all the ouput heads except meta and pose as they are using conv features only. 
+    """
+    def __init__(self,inputs_dim, outputs_dim):
+        super(outputHeads,self).__init__()
+        self.inputs_dim = inputs_dim
+        self.outputs_dim = outputs_dim 
+        self.path_layer= CommanBranchOuputModule(self.inputs_dim["path"], self.outputs_dim["path"])
+
+        self.ll_pred_1_layer = CommanBranchOuputModule(self.inputs_dim["ll_pred"], self.outputs_dim["ll_pred"])
+        self.ll_pred_2_layer = CommanBranchOuputModule(self.inputs_dim["ll_pred"], self.outputs_dim["ll_pred"])
+        self.ll_pred_3_layer = CommanBranchOuputModule(self.inputs_dim["ll_pred"], self.outputs_dim["ll_pred"])
+        self.ll_pred_4_layer = CommanBranchOuputModule(self.inputs_dim["ll_pred"], self.outputs_dim["ll_pred"])
+    
+        self.ll_prob_layer = CommanBranchOuputModule(self.inputs_dim["llprob"], self.outputs_dim["llprob"])
+
+        self.road_edg_layer1 = CommanBranchOuputModule(self.inputs_dim["road_edges"],outputs_dim["road_edges"])
+        self.road_edg_layer2 = CommanBranchOuputModule(self.inputs_dim["road_edges"],outputs_dim["road_edges"])
+
+        
+    def forward(self,x):
+
+        #paths 
+        path_pred_out = self.path_layer(x)
+        
+        #lanelines 
+        ll1 = torch.reshape(self.ll_pred_1_layer(x),(1,2,66))
+        ll2 = torch.reshape(self.ll_pred_2_layer(x),(1,2,66))
+        ll3 = torch.reshape(self.ll_pred_3_layer(x),(1,2,66))
+        ll4 = torch.reshape(self.ll_pred_4_layer(x),(1,2,66))
+        
+        ll_pred = torch.cat((ll1,ll2,ll3,ll4),2) # concatenated along axis =2
+        ll_pred_f = ll_pred.view(-1,ll_pred.size()[0]*ll_pred.size()[1]*ll_pred.size()[2])
+        
+        #laneline prob 
+        ll_prob = self.ll_prob_layer(x)
+
+        #road Edges
+        road_edg_pred1 = torch.reshape(self.road_edg_layer1(x),(1,2,66))
+        road_edg_pred2 = torch.reshape(self.road_edg_layer2(x),(1,2,66))
+
+        road_edg_pred = torch.cat((road_edg_pred1, road_edg_pred2),2)
+        road_edg_pred_f = road_edg_pred.view(-1,road_edg_pred.size()[0]*road_edg_pred.size()[1]*road_edg_pred.size()[2]) 
+
+        ##lead_car
+        
+
+        return path_pred_out, ll_pred_f, ll_prob, road_edg_pred_f 
+
 
 
 # ### Combined model
@@ -287,6 +338,9 @@ class CommanBranchOuputModule(nn.Module):
 #     def forward(self,x):
 
 #         return x
+
+#####  Random arguments to define the model ##### 
+
 """
 filters_list = [16,24,48,88,120,208,352]
 model = AggregationBlock(filters_list[4],filters_list[5],6,[(1,0),(1,2),(1,0)])
@@ -300,7 +354,9 @@ this is an example how to make the aggregation layers
 # # x = x.permute(0,2,3,1)
 # output = model(x)
 
-inputs_dim_outputheads= {"path":[256], "ll_pred":32, "llprob":16,"road_edges":16 ,"lead_car":64 , "leadprob":16, "desire_state":32, "meta":[64,32], "pose":32}
+inputs_dim_outputheads= {"path":256, "ll_pred":32, "llprob":16,"road_edges":16 ,"lead_car":64 , "leadprob":16, "desire_state":32, "meta":[64,32], "pose":32}
 
 output_dim_outputheads = {"path":4955, "ll_pred":132, "llprob":8,"road_edges":132 ,"lead_car":102, "leadprob":3, "desire_state":8, "meta":[48,32], "pose":12}
 
+model = outputHeads(inputs_dim_outputheads, output_dim_outputheads)
+print(model)
