@@ -22,7 +22,6 @@ Pytorch 1.7.1 has no efficient net implemented.
 class intialAggregationBlock(nn.Module):
     def __init__(self, in_channels):
         super(intialAggregationBlock, self).__init__()
-        
         self.in_channels = in_channels
         self.conv1 = nn.Conv2d(self.in_channels,32,kernel_size=3, padding=(1,1), stride=(2,2))
         self.conv2 = nn.Conv2d(32,32, kernel_size=3, padding=(1,1), stride=(1,1))
@@ -31,7 +30,7 @@ class intialAggregationBlock(nn.Module):
         self.batchnorm1 = nn.BatchNorm2d(32, eps = 0.001, momentum=0.99)
         self.batchnorm2 = nn.BatchNorm2d(32, eps = 0.001, momentum=0.99)
         self.batchnorm3=  nn.BatchNorm2d(16,eps = 0.001, momentum=0.99)        
-    
+
     def forward(self,x):
         x = self.elu(self.batchnorm1(self.conv1(x)))
         x = self.elu(self.batchnorm2(self.conv2(x)))
@@ -43,13 +42,11 @@ class intialAggregationBlock(nn.Module):
 class InitialResBlock(nn.Module):
     def __init__(self, in_channels, out_channels):
         super(InitialResBlock, self).__init__()
-        
         self.conv1 = nn.Conv2d(in_channels, out_channels,kernel_size=3, stride=1, padding =1)
         self.conv2 = nn.Conv2d(out_channels, out_channels,kernel_size=1, stride = 1)
         self.batch_norm1 = nn.BatchNorm2d(out_channels,eps = 0.001, momentum=0.99)
         self.batch_norm2 = nn.BatchNorm2d(out_channels, eps = 0.001, momentum= 0.99)
         self.elu = ELU()
-        
     def forward(self, x):
         identity = x.clone()
         x = self.elu(self.batch_norm1(self.conv1(x)))
@@ -66,7 +63,6 @@ Combine Both 1_3_1 and 1_5_1 classes
 class BottleneckBlock1_3_1(nn.Module):
     def __init__(self, in_channels, out_channels, d_pad,expansion= 6):
         super(BottleneckBlock1_3_1,self).__init__()
-
         self.expansion = expansion
         self.d_pad = d_pad
         self.conv1 = nn.Conv2d(in_channels, out_channels*self.expansion, kernel_size=1, stride =1, padding =0)
@@ -78,7 +74,6 @@ class BottleneckBlock1_3_1(nn.Module):
         self.batch_norm3 = nn.BatchNorm2d(out_channels, eps = 0.001, momentum = 0.99)
 
     def forward(self, x):
-
         identity = x.clone()
         x = self.elu(self.batch_norm1(self.conv1(x)))
         x = self.elu(self.batch_norm2(self.conv2(x)))
@@ -90,7 +85,6 @@ class BottleneckBlock1_3_1(nn.Module):
 class BottleneckBlock1_5_1(nn.Module):
     def __init__(self,in_channels, out_channels,d_pad,expansion= 6):
         super(BottleneckBlock1_5_1, self).__init__()
-        
         self.d_pad = d_pad 
         self.expansion = expansion
         self.conv1 = nn.Conv2d(in_channels, out_channels*self.expansion, kernel_size=1, stride =1, padding =0)
@@ -113,7 +107,6 @@ class BottleneckBlock1_5_1(nn.Module):
 class AggregationBlock(nn.Module):
     def __init__(self,in_channels, out_channels, expansion, pad_stridepairs= [],kernel_3 = False):
         super(AggregationBlock, self).__init__()
-        
         self.pad_stridepairs =pad_stridepairs  
         self.expansion = expansion
         self.conv1 = nn.Conv2d(in_channels, in_channels*self.expansion, kernel_size=1, stride =self.pad_stridepairs[0][0], padding = self.pad_stridepairs[0][1])
@@ -143,7 +136,6 @@ class AggregationBlock(nn.Module):
 class ConvFeatureExtractor(nn.Module):
     def __init__(self, filter_list,expansion, num_in_channels =12):
         super(ConvFeatureExtractor,self).__init__()
-        
         self.filter_list = filter_list
         self.expansion = expansion
         self.num_in_channels = num_in_channels 
@@ -207,7 +199,8 @@ class ConvFeatureExtractor(nn.Module):
         x = self.layer22(x)
         x = self.layer23(x)
         x = self.elu(self.batchnorm1(self.conv1(x)))
-        x = self.batchnorm2(self.conv2(x))
+        x = self.batchnorm2(self.conv2(x))        i_r, i_i, i_n = gate_x.chunk(3, 1)
+
         x = x.view(-1,1024)
 
         return x 
@@ -219,7 +212,6 @@ Fully connected layers are GEMM operators in ONNX computation graph.
 class GRUCell(nn.Module):
     def __init__(self, input_size, hidden_size):
         super(GRUCell, self).__init__()
-        
         self.input_size = input_size
         self.hidden_size = hidden_size
         self.x2h = nn.Linear(input_size, 3 * hidden_size)
@@ -227,7 +219,6 @@ class GRUCell(nn.Module):
         self.reset_param()
         self.s = nn.Sigmoid()
         self.m = nn.Tanh()
-        
 
     def reset_param(self):
         std = 1.0 / math.sqrt(self.hidden_size)
@@ -235,23 +226,17 @@ class GRUCell(nn.Module):
             w.data.uniform_(-std, std)
     
     def forward(self, x, init_state):
-        
-        x = x.view(-1, x.size(1))
-        
         gate_x = self.x2h(x) 
         gate_h = self.h2h(init_state)
         
         i_r, i_i, i_n = gate_x.chunk(3, 1)
         h_r, h_i, h_n = gate_h.chunk(3, 1)
-        
-        
+
         resetgate = self.s(i_r + h_r)
         updategate = self.s(i_i + h_i)
         newgate = self.m(i_n + (resetgate * h_n))
         
         hidden_state = newgate + updategate * (init_state - newgate)
-        
-        
         return hidden_state
 
 # class GRUModel(nn.Module):
@@ -351,53 +336,37 @@ class outputHeads(nn.Module):
         change torch.reshape to view
         """
         x = self.relu(self.fc1(x))
-
         y = self.elu(y)
         y = self.relu(self.fc2(y))
-
         #paths 
         path_pred_out = self.path_layer(x)
-        
         #lanelines
         test_tensor = self.ll_pred_1_layer(x) 
-        
         ll1 = torch.reshape(self.ll_pred_1_layer(x),(1,2,66))
         ll2 = torch.reshape(self.ll_pred_2_layer(x),(1,2,66))
         ll3 = torch.reshape(self.ll_pred_3_layer(x),(1,2,66))
         ll4 = torch.reshape(self.ll_pred_4_layer(x),(1,2,66))
-        
         ll_pred = torch.cat((ll1,ll2,ll3,ll4),2) # concatenated along axis =2
-        
         ll_pred_f = ll_pred.view(-1,ll_pred.size()[0]*ll_pred.size()[1]*ll_pred.size()[2])
-        
         #laneline prob 
         ll_prob = self.ll_prob_layer(x)
-
         #road Edges
         road_edg_pred1 = torch.reshape(self.road_edg_layer1(x),(1,2,66))
         road_edg_pred2 = torch.reshape(self.road_edg_layer2(x),(1,2,66))
-
         road_edg_pred = torch.cat((road_edg_pred1, road_edg_pred2),2)
         road_edg_pred_f = road_edg_pred.view(-1,road_edg_pred.size()[0]*road_edg_pred.size()[1]*road_edg_pred.size()[2]) 
-
         #lead car
         lead_car_pred = self.lead_car_layer(x)
-
         #lead prob
         lead_prob_pred = self.lead_prob_layer(x)
-
         #desire state
         desire_pred = self.desire_layer(x)
-
         #meta1 
         meta1_pred = self.meta_layer1(y)
-        
         #meta2
         meta2_pred = self.meta_layer2(y)
-
         #pose 
         pose_pred = self.pose_layer(y)
-
         return path_pred_out, ll_pred_f, ll_prob, road_edg_pred_f, lead_car_pred, lead_prob_pred, desire_pred, meta1_pred,meta2_pred,pose_pred
 
 
