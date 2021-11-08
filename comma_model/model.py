@@ -1,3 +1,4 @@
+import math
 import torch 
 import torch.nn as nn 
 import torch.functional as F
@@ -216,59 +217,72 @@ Fully connected layers are GEMM operators in ONNX computation graph.
 """
 # GRU cell 
 class GRUCell(nn.Module):
-    def __init__(self,input_size, hidden_size):
-        super(GRUCell,self).__init__()
+    def __init__(self, input_size, hidden_size):
+        super(GRUCell, self).__init__()
         
         self.input_size = input_size
         self.hidden_size = hidden_size
-
-        #input----> concat(conv-fts, desire, traffic_conven)
-        self. = 
-
+        self.x2h = nn.Linear(input_size, 3 * hidden_size)
+        self.h2h = nn.Linear(hidden_size, 3 * hidden_size)
+        self.reset_param()
+        self.s = nn.Sigmoid()
+        self.m = nn.Tanh()
         
 
-    def forward(self,x):
-        x = self.in_prelstmcell
-
-        return x
-
-
-
-
-class GRUModel(nn.Module):
-    def __init__(self):
-        super(GRUCell,self).__init__()
-
-        # self.desire =desire 
-        # self.conv_features = conv_features
-        # self.traffic_convention = traffic_convention
-        # self.intial_state = intial_state 
-
-        self.gemmtoGRU = nn.Linear(1034,1024)
-        self.elu = ELU()
-        self.relu = nn.ReLU()
+    def reset_param(self):
+        std = 1.0 / math.sqrt(self.hidden_size)
+        for w in self.parameters():
+            w.data.uniform_(-std, std)
+    
+    def forward(self, x, init_state):
         
-        self.initialize_initial_state = torch.zeros(1,512)
-        self.initialize_desire = torch.zeros(1,8)
-        self.initialize_traffic_convention = torch.zeros(1,2)
-
-
-    def forward(self,desire,conv_features,traffic_convention):
+        x = x.view(-1, x.size(1))
         
-        assert self.desire.size() == (1,8), "desire tensor shape is wrong"
-        assert self.conv_features.size() == (1,1024), "conv feature tensor shape is wrong"
-        assert self.traffic_convention.size() == (1,2), "traffic convention tensor shape is wrong"
-
-        x = self.elu(torch.cat((self.conv_features,self.desire, self.traffic_convention),1))
-        in_GRU = self.relu(self.gemmtoGRU(x))
-
-
+        gate_x = self.x2h(x) 
+        gate_h = self.h2h(init_state)
+        
+        i_r, i_i, i_n = gate_x.chunk(3, 1)
+        h_r, h_i, h_n = gate_h.chunk(3, 1)
         
         
+        resetgate = self.s(i_r + h_r)
+        updategate = self.s(i_i + h_i)
+        newgate = self.m(i_n + (resetgate * h_n))
+        
+        hidden_state = newgate + updategate * (init_state - newgate)
+        
+        
+        return hidden_state
 
+# class GRUModel(nn.Module):
+#     def __init__(self):
+#         super(GRUCell,self).__init__()
+
+#         # self.desire = desire 
+#         # self.conv_features = conv_features
+#         # self.traffic_convention = traffic_convention
+#         # self.intial_state = intial_state 
+
+#         self.gemmtoGRU = nn.Linear(1034,1024)
+#         self.elu = ELU()
+#         self.relu = nn.ReLU()
+        
+#         self.initialize_initial_state = torch.zeros(1,512)
+#         self.initialize_desire = torch.zeros(1,8)
+#         self.initialize_traffic_convention = torch.zeros(1,2)
+
+
+#     def forward(self,desire,conv_features,traffic_convention):
+        
+#         assert desire.size() == (1,8), "desire tensor shape is wrong"
+#         assert conv_features.size() == (1,1024), "conv feature tensor shape is wrong"
+#         assert traffic_convention.size() == (1,2), "traffic convention tensor shape is wrong"
+
+#         x = self.elu(torch.cat((conv_features,desire,traffic_convention),1))
+#         in_GRU = self.relu(self.gemmtoGRU(x))
         
         
-        return in_GRU, x 
+#         return pass 
 
 
 
@@ -384,8 +398,7 @@ class outputHeads(nn.Module):
         #pose 
         pose_pred = self.pose_layer(y)
 
-        return torch.cat((path_pred_out, ll_pred_f, ll_prob, road_edg_pred_f, 
-                        lead_car_pred, lead_prob_pred, desire_pred, meta1_pred,meta2_pred,pose_pred),1) 
+        return path_pred_out, ll_pred_f, ll_prob, road_edg_pred_f, lead_car_pred, lead_prob_pred, desire_pred, meta1_pred,meta2_pred,pose_pred
 
 
 
@@ -426,3 +439,12 @@ this is an example how to make the aggregation layers
 # b = torch.rand(1,1024)
 # output = model(a,b)
 # print(output.size())
+
+
+model= GRUCell(1024,512)
+
+a = torch.randn(1,512)
+b = torch.randn(1,1024)
+
+out1 = model(b,a)
+print(out1.size())
