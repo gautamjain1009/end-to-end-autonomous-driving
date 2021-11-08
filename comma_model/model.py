@@ -214,44 +214,62 @@ class ConvFeatureExtractor(nn.Module):
 """
 Fully connected layers are GEMM operators in ONNX computation graph.
 """
-class preLSTMCell(nn.Module):
-    def __init__(self,desire, conv_features,traffic_convention):
-        super(preLSTMCell,self).__init__()
-
-        self.desire =desire 
-        self.conv_features = conv_features
-        self.traffic_convention = traffic_convention
-
-        assert self.desire.size() == (1,8), "desire tensor shape is wrong"
-        assert self.conv_features.size() == (1,1024), "conv feature tensor shape is wrong"
-        assert self.traffic_convention.size() == (1,2), "traffic convention tensor shape is wrong"
+# GRU cell 
+class GRUCell(nn.Module):
+    def __init__(self,input_size, hidden_size):
+        super(GRUCell,self).__init__()
         
-        self.gemmtolstm = nn.Linear(1034,1024)
+        self.input_size = input_size
+        self.hidden_size = hidden_size
+
+        #input----> concat(conv-fts, desire, traffic_conven)
+        self. = 
+
+        
+
+    def forward(self,x):
+        x = self.in_prelstmcell
+
+        return x
+
+
+
+
+class GRUModel(nn.Module):
+    def __init__(self):
+        super(GRUCell,self).__init__()
+
+        # self.desire =desire 
+        # self.conv_features = conv_features
+        # self.traffic_convention = traffic_convention
+        # self.intial_state = intial_state 
+
+        self.gemmtoGRU = nn.Linear(1034,1024)
         self.elu = ELU()
         self.relu = nn.ReLU()
         
-    def forward(self,x):
+        self.initialize_initial_state = torch.zeros(1,512)
+        self.initialize_desire = torch.zeros(1,8)
+        self.initialize_traffic_convention = torch.zeros(1,2)
+
+
+    def forward(self,desire,conv_features,traffic_convention):
+        
+        assert self.desire.size() == (1,8), "desire tensor shape is wrong"
+        assert self.conv_features.size() == (1,1024), "conv feature tensor shape is wrong"
+        assert self.traffic_convention.size() == (1,2), "traffic convention tensor shape is wrong"
+
         x = self.elu(torch.cat((self.conv_features,self.desire, self.traffic_convention),1))
-        x = self.relu(self.gemmtolstm(x))
-        return x
+        in_GRU = self.relu(self.gemmtoGRU(x))
 
-# # GRU cell 
-# class GRUCell(nn.Module):
-#     def __init__(self,in_prelstmcell, conv_ft_in, desire_in, traffic_conv):
-#         super(GRYCell,self).__init__()
-#         self.conv_ft_in = conv_ft_in
-#         self.desire_in = desire_in
-#         self.traffic_conv = traffic_conv
-        
-#         #input----> concat(conv-fts, desire, traffic_conven)
-#         self.in_prelstmcell = preLSTMCell
 
         
+        
 
-#     def forward(self,x):
-#         x = self.in_prelstmcell
+        
+        
+        return in_GRU, x 
 
-#         return x
 
 
 #### all the dense output head for the network
@@ -315,7 +333,9 @@ class outputHeads(nn.Module):
         self.pose_layer = CommanBranchOuputModule(self.inputs_dim["pose"],self.outputs_dim["pose"]) 
     
     def forward(self,x,y):
-        
+        """
+        change torch.reshape to view
+        """
         x = self.relu(self.fc1(x))
 
         y = self.elu(y)
@@ -326,14 +346,14 @@ class outputHeads(nn.Module):
         
         #lanelines
         test_tensor = self.ll_pred_1_layer(x) 
-        print(type(test_tensor))
+        
         ll1 = torch.reshape(self.ll_pred_1_layer(x),(1,2,66))
         ll2 = torch.reshape(self.ll_pred_2_layer(x),(1,2,66))
         ll3 = torch.reshape(self.ll_pred_3_layer(x),(1,2,66))
         ll4 = torch.reshape(self.ll_pred_4_layer(x),(1,2,66))
         
         ll_pred = torch.cat((ll1,ll2,ll3,ll4),2) # concatenated along axis =2
-        #print(type(ll_pred))
+        
         ll_pred_f = ll_pred.view(-1,ll_pred.size()[0]*ll_pred.size()[1]*ll_pred.size()[2])
         
         #laneline prob 
