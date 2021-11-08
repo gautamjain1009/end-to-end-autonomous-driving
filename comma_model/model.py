@@ -235,18 +235,21 @@ class preLSTMCell(nn.Module):
         x = self.relu(self.gemmtolstm(x))
         return x
 
-#LSTM Cell 
-# class LSTMCell(nn.Module):
+# # GRU cell 
+# class GRUCell(nn.Module):
 #     def __init__(self,in_prelstmcell, conv_ft_in, desire_in, traffic_conv):
-#         super(LSTMCell,self).__init__()
+#         super(GRYCell,self).__init__()
 #         self.conv_ft_in = conv_ft_in
 #         self.desire_in = desire_in
 #         self.traffic_conv = traffic_conv
-#         self.in_prelstmcell = preLSTMCell(desire_in, conv_ft_in, traffic_conv)
+        
+#         #input----> concat(conv-fts, desire, traffic_conven)
+#         self.in_prelstmcell = preLSTMCell
 
         
 
 #     def forward(self,x):
+#         x = self.in_prelstmcell
 
 #         return x
 
@@ -273,7 +276,7 @@ class CommanBranchOuputModule(nn.Module):
         x = self.relu(x)
         x =self.fc4(x) 
 
-        pass 
+        return x
 
 class outputHeads(nn.Module):
 
@@ -321,13 +324,16 @@ class outputHeads(nn.Module):
         #paths 
         path_pred_out = self.path_layer(x)
         
-        #lanelines 
+        #lanelines
+        test_tensor = self.ll_pred_1_layer(x) 
+        print(type(test_tensor))
         ll1 = torch.reshape(self.ll_pred_1_layer(x),(1,2,66))
         ll2 = torch.reshape(self.ll_pred_2_layer(x),(1,2,66))
         ll3 = torch.reshape(self.ll_pred_3_layer(x),(1,2,66))
         ll4 = torch.reshape(self.ll_pred_4_layer(x),(1,2,66))
         
         ll_pred = torch.cat((ll1,ll2,ll3,ll4),2) # concatenated along axis =2
+        #print(type(ll_pred))
         ll_pred_f = ll_pred.view(-1,ll_pred.size()[0]*ll_pred.size()[1]*ll_pred.size()[2])
         
         #laneline prob 
@@ -357,7 +363,6 @@ class outputHeads(nn.Module):
 
         #pose 
         pose_pred = self.pose_layer(y)
-
 
         return torch.cat((path_pred_out, ll_pred_f, ll_prob, road_edg_pred_f, 
                         lead_car_pred, lead_prob_pred, desire_pred, meta1_pred,meta2_pred,pose_pred),1) 
@@ -391,9 +396,13 @@ this is an example how to make the aggregation layers
 # # x = x.permute(0,2,3,1)
 # output = model(x)
 
-inputs_dim_outputheads= {"path":256, "ll_pred":32, "llprob":16,"road_edges":16 ,"lead_car":64 , "leadprob":16, "desire_state":32, "meta":[64,32], "pose":32}
+# inputs_dim_outputheads= {"path":256, "ll_pred":32, "llprob":16,"road_edges":16 ,"lead_car":64 , "leadprob":16, "desire_state":32, "meta":[64,32], "pose":32}
 
-output_dim_outputheads = {"path":4955, "ll_pred":132, "llprob":8,"road_edges":132 ,"lead_car":102, "leadprob":3, "desire_state":8, "meta":[48,32], "pose":12}
+# output_dim_outputheads = {"path":4955, "ll_pred":132, "llprob":8,"road_edges":132 ,"lead_car":102, "leadprob":3, "desire_state":8, "meta":[48,32], "pose":12}
 
-model = outputHeads(inputs_dim_outputheads, output_dim_outputheads)
-print(model)
+# model = outputHeads(inputs_dim_outputheads, output_dim_outputheads)
+
+# a = torch.rand(1,1536)
+# b = torch.rand(1,1024)
+# output = model(a,b)
+# print(output.size())
