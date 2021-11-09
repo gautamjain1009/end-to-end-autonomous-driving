@@ -19,7 +19,7 @@ expansion factor of 6 for depthwise conv. in all the next residual layers
 Pytorch 1.7.1 has no efficient net implemented. 
 """
 
-## starting aggregation block
+## starting aggregation block (OK)
 class intialAggregationBlock(nn.Module):
     def __init__(self, in_channels):
         super(intialAggregationBlock, self).__init__()
@@ -41,7 +41,7 @@ class intialAggregationBlock(nn.Module):
         return x
 
 
-#starting residual block
+#starting residual block(OK)
 class InitialResBlock(nn.Module):
     def __init__(self, in_channels, out_channels):
         super(InitialResBlock, self).__init__()
@@ -130,10 +130,9 @@ class AggregationBlock(nn.Module):
     def forward(self,x):
         x = self.elu(self.batch_norm1(self.conv1(x)))
         x = self.elu(self.batch_norm2(self.conv2(x)))
-        x = self.batch_norm3(self.conv1(x))
+        x = self.batch_norm3(self.conv3(x))
 
         return x 
-
 
 # Combined Resnet for conv features extraction
 
@@ -266,14 +265,14 @@ class GRUModel(nn.Module):
         return out_GRU
 
     def init_initial_tensors(self):
-        
+        # to be intialized in training script
         if torch.cuda.is_available():
             # Variable: to enable back pass for
             self.initialize_initial_state = Variable(torch.zeros(1,512).cuda()) 
-            self.initialize_desire = Variable(torch.zeros(1,8).cuda())
-            self.initialize_traffic_convention = Variable(torch.zeros(1,2).cuda())    
+            self.initialize_desire = torch.zeros(1,8).cuda()
+            self.initialize_traffic_convention = torch.zeros(1,2).cuda()    
         else: 
-            self.initialize_initial_state = torch.zeros(1,512)
+            self.initialize_initial_state = Variable(torch.zeros(1,512))
             self.initialize_desire = torch.zeros(1,8)
             self.initialize_traffic_convention = torch.zeros(1,2)
 
@@ -398,13 +397,6 @@ filters_list = [16,24,48,88,120,208,352]
 model = AggregationBlock(filters_list[4],filters_list[5],6,[(1,0),(1,2),(1,0)])
 this is an example how to make the aggregation layers
 """
-# filters_list = [16,24,48,88,120,208,352]
-# expansion = 6
-# model = ConvFeatureExtractor(filters_list,expansion)
-
-# x = torch.randn(1,12,128,256)
-# # x = x.permute(0,2,3,1)
-# output = model(x)
 
 # inputs_dim_outputheads= {"path":256, "ll_pred":32, "llprob":16,"road_edges":16 ,"lead_car":64 , "leadprob":16, "desire_state":32, "meta":[64,32], "pose":32}
 
@@ -417,23 +409,21 @@ this is an example how to make the aggregation layers
 # output = model(a,b)
 # print(output.size())
 
+# d = torch.rand(1,8)
+# c = torch.randn(1,1024)
+# i = torch.randn(1,512)
+# t = torch.randn(1,2)
 
-# model= GRUCell(1024,512)
+# model = GRUModel()
+# out= model(d,c,t,i)
+# print(out.size())
 
-# a = torch.randn(1,512)
-# b = torch.randn(1,1024)
+filters_list = [16,24,48,88,120,208,352]
+expansion = 6
+model = ConvFeatureExtractor(filters_list,expansion)
 
-# out1 = model(b,a)
-# print(out1.size())
-
-d = torch.rand(1,8)
-c = torch.randn(1,1024)
-i = torch.randn(1,512)
-t = torch.randn(1,2)
-
-
-
-model = GRUModel()
-out= model(d,c,t,i)
-print(out.size())
-
+x = torch.randn(1,12,128,256)
+# x = x.permute(0,2,3,1)
+# model = AggregationBlock(filters_list[0],filters_list[1],expansion,[(1,0),(2,1),(1,0)],True)
+output= model(x)
+print(output.size())
