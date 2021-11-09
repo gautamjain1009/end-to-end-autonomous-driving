@@ -2,6 +2,7 @@ import math
 import torch 
 import torch.nn as nn 
 import torch.functional as F
+from torch.autograd import Variable
 from torch.nn.modules.activation import ELU
 from torch.nn.modules.linear import Identity
 from torch.nn.modules.rnn import LSTM
@@ -32,11 +33,13 @@ class intialAggregationBlock(nn.Module):
         self.batchnorm3=  nn.BatchNorm2d(16,eps = 0.001, momentum=0.99)        
 
     def forward(self,x):
+
         x = self.elu(self.batchnorm1(self.conv1(x)))
         x = self.elu(self.batchnorm2(self.conv2(x)))
         x = self.batchnorm3(self.conv3(x))
 
         return x
+
 
 #starting residual block
 class InitialResBlock(nn.Module):
@@ -47,12 +50,13 @@ class InitialResBlock(nn.Module):
         self.batch_norm1 = nn.BatchNorm2d(out_channels,eps = 0.001, momentum=0.99)
         self.batch_norm2 = nn.BatchNorm2d(out_channels, eps = 0.001, momentum= 0.99)
         self.elu = ELU()
+
     def forward(self, x):
+
         identity = x.clone()
         x = self.elu(self.batch_norm1(self.conv1(x)))
         x = self.elu(self.batch_norm2(self.conv2(x)))
         x+= identity
-
         return x
 
 """
@@ -241,7 +245,7 @@ class GRUCell(nn.Module):
 
 class GRUModel(nn.Module):
     def __init__(self):
-        super(GRUCell,self).__init__()
+        super(GRUModel,self).__init__()
 
         self.gemmtoGRU = nn.Linear(1034,1024)
         self.elu = ELU()
@@ -255,18 +259,19 @@ class GRUModel(nn.Module):
         assert traffic_convention.size() == (1,2), "traffic convention tensor shape is wrong"
 
         x = self.elu(torch.cat((conv_features,desire,traffic_convention),1))
-        in_GRU = self.relu(self.gemmtoGRU(x,init_state))
+        in_GRU = self.relu(self.gemmtoGRU(x))
 
-        out_GRU = self.GRUlayer(in_GRU,)
+        out_GRU = self.GRUlayer(in_GRU,init_state)
 
         return out_GRU
 
     def init_initial_tensors(self):
         
         if torch.cuda.is_available():
-            self.initialize_initial_state = torch.zeros(1,512).cuda()
-            self.initialize_desire = torch.zeros(1,8).cuda()
-            self.initialize_traffic_convention = torch.zeros(1,2).cuda()    
+            # Variable: to enable back pass for
+            self.initialize_initial_state = Variable(torch.zeros(1,512).cuda()) 
+            self.initialize_desire = Variable(torch.zeros(1,8).cuda())
+            self.initialize_traffic_convention = Variable(torch.zeros(1,2).cuda())    
         else: 
             self.initialize_initial_state = torch.zeros(1,512)
             self.initialize_desire = torch.zeros(1,8)
@@ -413,10 +418,22 @@ this is an example how to make the aggregation layers
 # print(output.size())
 
 
-model= GRUCell(1024,512)
+# model= GRUCell(1024,512)
 
-a = torch.randn(1,512)
-b = torch.randn(1,1024)
+# a = torch.randn(1,512)
+# b = torch.randn(1,1024)
 
-out1 = model(b,a)
-print(out1.size())
+# out1 = model(b,a)
+# print(out1.size())
+
+d = torch.rand(1,8)
+c = torch.randn(1,1024)
+i = torch.randn(1,512)
+t = torch.randn(1,2)
+
+
+
+model = GRUModel()
+out= model(d,c,t,i)
+print(out.size())
+
