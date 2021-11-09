@@ -407,7 +407,6 @@ filters_list = [16,24,48,88,120,208,352]
 model = AggregationBlock(filters_list[4],filters_list[5],6,[(1,0),(1,2),(1,0)])
 this is an example how to make the aggregation layers
 """
-
 inputs_dim_outputheads= {"path":256, "ll_pred":32, "llprob":16,"road_edges":16 ,"lead_car":64 , "leadprob":16, "desire_state":32, "meta":[64,32], "pose":32}
 output_dim_outputheads = {"path":4955, "ll_pred":132, "llprob":8,"road_edges":132 ,"lead_car":102, "leadprob":3, "desire_state":8, "meta":[48,32], "pose":12}
 filters_list = [16,24,48,88,120,208,352]
@@ -438,3 +437,13 @@ expansion = 6
 # print(output.size())
 
 #########################################################
+
+#dummy inputs 
+image = torch.randn(1,12,128,256)
+desire = torch.rand(1,8)
+state = torch.rand(1,512)
+traf = torch.rand(1,2)
+
+main_model = Combined_model(filters_list,expansion,inputs_dim_outputheads,output_dim_outputheads)
+outputs = main_model( image, desire, state, traf)
+# print(outputs[0].shape)
