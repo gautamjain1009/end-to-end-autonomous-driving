@@ -199,7 +199,7 @@ class ConvFeatureExtractor(nn.Module):
         x = self.layer22(x)
         x = self.layer23(x)
         x = self.elu(self.batchnorm1(self.conv1(x)))
-        x = self.batchnorm2(self.conv2(x))        i_r, i_i, i_n = gate_x.chunk(3, 1)
+        x = self.batchnorm2(self.conv2(x))     
 
         x = x.view(-1,1024)
 
@@ -239,39 +239,42 @@ class GRUCell(nn.Module):
         hidden_state = newgate + updategate * (init_state - newgate)
         return hidden_state
 
-# class GRUModel(nn.Module):
-#     def __init__(self):
-#         super(GRUCell,self).__init__()
+class GRUModel(nn.Module):
+    def __init__(self):
+        super(GRUCell,self).__init__()
 
-#         # self.desire = desire 
-#         # self.conv_features = conv_features
-#         # self.traffic_convention = traffic_convention
-#         # self.intial_state = intial_state 
+        self.gemmtoGRU = nn.Linear(1034,1024)
+        self.elu = ELU()
+        self.relu = nn.ReLU()
+        self.GRUlayer = GRUCell(1024,512)
 
-#         self.gemmtoGRU = nn.Linear(1034,1024)
-#         self.elu = ELU()
-#         self.relu = nn.ReLU()
+    def forward(self,desire,conv_features,traffic_convention, init_state):
         
-#         self.initialize_initial_state = torch.zeros(1,512)
-#         self.initialize_desire = torch.zeros(1,8)
-#         self.initialize_traffic_convention = torch.zeros(1,2)
+        assert desire.size() == (1,8), "desire tensor shape is wrong"
+        assert conv_features.size() == (1,1024), "conv feature tensor shape is wrong"
+        assert traffic_convention.size() == (1,2), "traffic convention tensor shape is wrong"
 
+        x = self.elu(torch.cat((conv_features,desire,traffic_convention),1))
+        in_GRU = self.relu(self.gemmtoGRU(x,init_state))
 
-#     def forward(self,desire,conv_features,traffic_convention):
+        out_GRU = self.GRUlayer(in_GRU,)
+
+        return out_GRU
+
+    def init_initial_tensors(self):
         
-#         assert desire.size() == (1,8), "desire tensor shape is wrong"
-#         assert conv_features.size() == (1,1024), "conv feature tensor shape is wrong"
-#         assert traffic_convention.size() == (1,2), "traffic convention tensor shape is wrong"
+        if torch.cuda.is_available():
+            self.initialize_initial_state = torch.zeros(1,512).cuda()
+            self.initialize_desire = torch.zeros(1,8).cuda()
+            self.initialize_traffic_convention = torch.zeros(1,2).cuda()    
+        else: 
+            self.initialize_initial_state = torch.zeros(1,512)
+            self.initialize_desire = torch.zeros(1,8)
+            self.initialize_traffic_convention = torch.zeros(1,2)
 
-#         x = self.elu(torch.cat((conv_features,desire,traffic_convention),1))
-#         in_GRU = self.relu(self.gemmtoGRU(x))
-        
-        
-#         return pass 
+            return self.initialize_desire, self.initialize_traffic_convention, self.initialize_initial_state
 
-
-
-#### all the dense output head for the network
+#### all the dense output head for the network #####
 
 class CommanBranchOuputModule(nn.Module):
     def __init__(self,input_dim, output_dim):
